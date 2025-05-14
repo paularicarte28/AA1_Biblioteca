@@ -5,19 +5,149 @@
   <title>Gestión de Usuarios</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 </head>
-<body class="p-4">
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <div class="container">
+      <a class="navbar-brand" href="index.html">Biblioteca Web</a>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="libros.html">Libros</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="usuarios.html">Usuarios</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+ 
   <div class="container">
     <h1 class="mb-4">Usuarios</h1>
 
-    <ul id="listaUsuarios" class="list-group mb-4"></ul>
+    <!-- Buscar  -->
+    <div class="card mb-4">
+      <div class="card-header">Buscar usuario por nombre o email</div>
+      <div class="card-body">
+        <div class="input-group">
+          <input id="buscarUsuarioTexto" placeholder="Buscar..." class="form-control" type="text">
+          <button onclick="filtrarUsuarios()" class="btn btn-primary">Buscar</button>
+        </div>
+      </div>
+    </div>
 
-    <h3>Crear nuevo usuario</h3>
-    <input id="nombre" placeholder="Nombre" class="form-control mb-2">
-    <input id="email" placeholder="Email" class="form-control mb-2" type="email">
-    <input id="password" placeholder="Contraseña" class="form-control mb-2" type="password">
-    <button onclick="crearUsuario()" class="btn btn-success">Crear</button>
+    <!-- nuevo usuario -->
+    <div class="card mb-4">
+      <div class="card-header">Crear nuevo usuario</div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-md-4">
+            <input id="nombre" placeholder="Nombre" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <input id="email" placeholder="Email" type="email" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <input id="password" placeholder="Contraseña" type="password" class="form-control">
+          </div>
+        </div>
+        <button onclick="crearUsuario()" class="btn btn-success mt-3">Crear</button>
+      </div>
+    </div>
+
+    <!-- lista -->
+    <div class="card">
+      <div class="card-header">Listado de usuarios</div>
+      <ul id="listaUsuarios" class="list-group list-group-flush"></ul>
+    </div>
   </div>
 
-  <script src="js/usuarios.js"></script>
+  <script>
+    const API = 'http://localhost:3000/api/usuarios';
+    let usuariosGlobal = [];
+
+    function cargarUsuarios() {
+      fetch(API)
+        .then(res => res.json())
+        .then(usuarios => {
+          usuariosGlobal = usuarios;
+          mostrarUsuarios(usuarios);
+        });
+    }
+
+    function mostrarUsuarios(usuarios) {
+      const lista = document.getElementById('listaUsuarios');
+      lista.innerHTML = '';
+      usuarios.forEach(usuario => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.innerHTML = `
+          <strong>${usuario.nombre}</strong> - ${usuario.email}
+          <button onclick="eliminarUsuario(${usuario.id})" class="btn btn-danger btn-sm float-end ms-2">Eliminar</button>
+          <button onclick="mostrarFormularioEditar(${usuario.id}, '${usuario.nombre}', '${usuario.email}')" class="btn btn-warning btn-sm float-end">Editar</button>
+        `;
+        lista.appendChild(li);
+      });
+    }
+
+    function filtrarUsuarios() {
+      const texto = document.getElementById('buscarUsuarioTexto').value.toLowerCase();
+      const filtrados = usuariosGlobal.filter(u =>
+        u.nombre.toLowerCase().includes(texto) ||
+        u.email.toLowerCase().includes(texto)
+      );
+      mostrarUsuarios(filtrados);
+    }
+
+    function crearUsuario() {
+      const nombre = document.getElementById('nombre').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      if (!nombre || !email || !password) {
+        alert("Por favor, completa todos los campos.");
+        return;
+      }
+
+      fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, email, password })
+      })
+      .then(res => res.ok ? res.json() : res.json().then(err => Promise.reject(err)))
+      .then(() => {
+        cargarUsuarios();
+        document.getElementById('nombre').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('password').value = '';
+      })
+      .catch(err => {
+        alert('Error: ' + err.errores.map(e => e.msg).join(', '));
+      });
+    }
+
+    function eliminarUsuario(id) {
+      fetch(`${API}/${id}`, { method: 'DELETE' })
+        .then(() => cargarUsuarios());
+    }
+
+    function mostrarFormularioEditar(id, nombreActual, emailActual) {
+      const nuevoNombre = prompt("Editar nombre:", nombreActual);
+      const nuevoEmail = prompt("Editar email:", emailActual);
+
+      if (nuevoNombre && nuevoEmail) {
+        fetch(`${API}/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre: nuevoNombre, email: nuevoEmail })
+        })
+        .then(() => cargarUsuarios());
+      }
+    }
+
+    cargarUsuarios();
+  </script>
 </body>
 </html>

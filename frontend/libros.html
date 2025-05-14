@@ -1,20 +1,162 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Libros</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap/dist/css/bootstrap.min.css">
+  <meta charset="UTF-8">
+  <title>Gestión de Libros</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 </head>
-<body class="p-4">
-    <h2>Listado de Libros</h2>
-    <ul id="listaLibros"></ul>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <div class="container">
+      <a class="navbar-brand" href="index.html">Biblioteca Web</a>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link active" href="libros.html">Libros</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="usuarios.html">Usuarios</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
 
-    <h3>Nuevo Libro</h3>
-    <input id="titulo" placeholder="Título" class="form-control">
-    <input id="autor" placeholder="Autor" class="form-control">
-    <input id="year" placeholder="Año" type="number" class="form-control">
-    <input id="isbn" placeholder="ISBN" class="form-control">
-    <button onclick="crearLibro()" class="btn btn-success mt-2">Crear</button>
+  <div class="container">
+    <h1 class="mb-4">Libros</h1>
 
-    <script src="js/libros.js"></script>
+    <!-- Buscar  -->
+    <div class="card mb-4">
+      <div class="card-header">Buscar libro por título, autor, año o ISBN</div>
+      <div class="card-body">
+        <div class="input-group">
+          <input id="buscarLibroTexto" placeholder="Buscar..." class="form-control" type="text">
+          <button onclick="filtrarLibros()" class="btn btn-primary">Buscar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- nuevo libri -->
+    <div class="card mb-4">
+      <div class="card-header">Crear nuevo libro</div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-md-3">
+            <input id="titulo" placeholder="Título" class="form-control">
+          </div>
+          <div class="col-md-3">
+            <input id="autor" placeholder="Autor" class="form-control">
+          </div>
+          <div class="col-md-3">
+            <input id="year" placeholder="Año" type="number" class="form-control">
+          </div>
+          <div class="col-md-3">
+            <input id="isbn" placeholder="ISBN" class="form-control">
+          </div>
+        </div>
+        <button onclick="crearLibro()" class="btn btn-success mt-3">Crear</button>
+      </div>
+    </div>
+
+    <!-- list -->
+    <div class="card">
+      <div class="card-header">Listado de libros</div>
+      <ul id="listaLibros" class="list-group list-group-flush"></ul>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:3000/api/libros';
+    let librosGlobal = [];
+
+    function cargarLibros() {
+      fetch(API)
+        .then(res => res.json())
+        .then(libros => {
+          librosGlobal = libros;
+          mostrarLibros(libros);
+        });
+    }
+
+    function mostrarLibros(libros) {
+      const lista = document.getElementById('listaLibros');
+      lista.innerHTML = '';
+      libros.forEach(libro => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.innerHTML = `
+          <strong>${libro.titulo}</strong> - ${libro.autor} (${libro.year})<br>
+          <small>ISBN: ${libro.isbn}</small>
+          <button onclick="eliminarLibro(${libro.id})" class="btn btn-danger btn-sm float-end ms-2">Eliminar</button>
+          <button onclick="mostrarFormularioEditar(${libro.id}, '${libro.titulo}', '${libro.autor}', ${libro.year}, '${libro.isbn}')" class="btn btn-warning btn-sm float-end">Editar</button>
+        `;
+        lista.appendChild(li);
+      });
+    }
+
+    function filtrarLibros() {
+      const texto = document.getElementById('buscarLibroTexto').value.toLowerCase();
+      const filtrados = librosGlobal.filter(l =>
+        l.titulo.toLowerCase().includes(texto) ||
+        l.autor.toLowerCase().includes(texto) ||
+        l.year.toString().includes(texto) ||
+        l.isbn.toLowerCase().includes(texto)
+      );
+      mostrarLibros(filtrados);
+    }
+
+    function crearLibro() {
+      const titulo = document.getElementById('titulo').value.trim();
+      const autor = document.getElementById('autor').value.trim();
+      const year = parseInt(document.getElementById('year').value.trim());
+      const isbn = document.getElementById('isbn').value.trim();
+
+      if (!titulo || !autor || !year || !isbn) {
+        alert("Por favor, completa todos los campos.");
+        return;
+      }
+
+      fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo, autor, year, isbn })
+      })
+      .then(res => res.ok ? res.json() : res.json().then(err => Promise.reject(err)))
+      .then(() => {
+        cargarLibros();
+        document.getElementById('titulo').value = '';
+        document.getElementById('autor').value = '';
+        document.getElementById('year').value = '';
+        document.getElementById('isbn').value = '';
+      })
+      .catch(err => {
+        alert('Error: ' + err.errores.map(e => e.msg).join(', '));
+      });
+    }
+
+    function eliminarLibro(id) {
+      fetch(`${API}/${id}`, { method: 'DELETE' })
+        .then(() => cargarLibros());
+    }
+
+    function mostrarFormularioEditar(id, titulo, autor, year, isbn) {
+      const nuevoTitulo = prompt("Editar título:", titulo);
+      const nuevoAutor = prompt("Editar autor:", autor);
+      const nuevoYear = prompt("Editar año:", year);
+      const nuevoIsbn = prompt("Editar ISBN:", isbn);
+
+      if (nuevoTitulo && nuevoAutor && nuevoYear && nuevoIsbn) {
+        fetch(`${API}/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ titulo: nuevoTitulo, autor: nuevoAutor, year: parseInt(nuevoYear), isbn: nuevoIsbn })
+        })
+        .then(() => cargarLibros());
+      }
+    }
+
+    cargarLibros();
+  </script>
 </body>
 </html>
