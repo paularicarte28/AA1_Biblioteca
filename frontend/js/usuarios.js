@@ -1,3 +1,4 @@
+const API = 'http://localhost:3000/api/usuarios';   
 function crearUsuario() {
     const nombre = document.getElementById('nombre').value.trim();
     const email = document.getElementById('email').value.trim();
